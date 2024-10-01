@@ -8,6 +8,9 @@ import java.util.Random;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator;
+import javax.sound.sampled.*;
+import java.io.File;
+import java.io.IOException;
 
 public class Game extends JFrame {
 
@@ -207,6 +210,7 @@ public class Game extends JFrame {
         if (isWordCorrect(currentCell, correctWords)) {
             score += 10;
             scoreLabel.setText("Score: " + score);
+            playSound("src/Resources/524609__clearwavsound__bone-crunch.wav");
         } else {
             if (score >= 10) {
                 score -= 10;
@@ -228,6 +232,7 @@ public class Game extends JFrame {
         gameTimer.stop();
         enemyTimer.stop();
         canMove = false;
+        playSound("src/Resources/79431__kyster__bell-010.wav");
 
         if (lives > 0) {
             JOptionPane.showMessageDialog(
@@ -255,6 +260,7 @@ public class Game extends JFrame {
         lives -= 1;
         livesLabel.setText("Lives: " + lives);
         canMove = false;
+        playSound("src/Resources/79431__kyster__bell-010.wav");
 
         if (lives > 0) {
             JOptionPane.showMessageDialog(
@@ -298,6 +304,7 @@ public class Game extends JFrame {
     private void detectCollision() {
         for (Enemy enemy : enemies) {
             if (enemy.getRow() == playerRow && enemy.getCol() == playerCol) {
+                playSound("src/Resources/608118__crazybeatsinc__light-crunch.wav");
                 handlePlayerCollision();
                 return;
             }
@@ -550,5 +557,35 @@ public class Game extends JFrame {
         );
         this.dispose();
         new LevelMenu();
+    }
+
+    public void playSound(String soundFilePath) {
+        try {
+            // Obtain an AudioInputStream from the sound file
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File(soundFilePath));
+            AudioFormat baseFormat = audioInputStream.getFormat();
+
+            // Check if the format is supported directly
+            AudioFormat decodedFormat = new AudioFormat(
+                    AudioFormat.Encoding.PCM_SIGNED,
+                    baseFormat.getSampleRate(),
+                    16,  // Use 16-bit instead of 24-bit
+                    baseFormat.getChannels(),
+                    baseFormat.getChannels() * 2, // Frame size
+                    baseFormat.getSampleRate(),
+                    false // Set to big-endian if needed
+            );
+
+            // Convert the stream if needed
+            AudioInputStream decodedAudioStream = AudioSystem.getAudioInputStream(decodedFormat, audioInputStream);
+
+            // Open and play the audio
+            Clip clip = AudioSystem.getClip();
+            clip.open(decodedAudioStream);
+            clip.start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
