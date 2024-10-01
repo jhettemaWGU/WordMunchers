@@ -22,14 +22,21 @@ public class Game extends JFrame {
     private final int ROWS = 5;
     private final int COLS = 6;
     private String[][] wordGrid;
-    private final String[] words = {"bell", "fell", "tell", "sell", "mall", "ball", "call", "tall", "small", "wall", "small", "hall", "yell", "smell", "hill", "pill", "mill", "drill"};
-    private final String[] correctWords = {"bell", "fell", "tell", "sell", "yell", "smell"};
+    private final String[] words = {"bell", "fell", "tell", "sell", "bed", "dead", "head", "yell", "smell", "mall", "ball", "call", "tall", "stall", "small", "wall", "stall", "fall", "hall", "hill", "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit"};
+    private final String[][] correctWords = {
+            {"bell", "fell", "tell", "sell", "yell", "smell", "bed", "dead", "head"},
+            {"small", "wall", "stall", "call", "tall", "mall", "hall", "fall", "stall", "ball"},
+            {"hill", "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit"}
+    };
     private boolean canMove = true;
     private Timer gameTimer;
     private Timer enemyTimer;
     private Timer enemySpawnTimer;
     private List<Enemy> enemies;
     private int maxEnemies = 1;
+    private int currentStage = 1;
+    private static final int TOTAL_STAGES = 3;
+
 
     public Game() {
         enemies = new ArrayList<>();
@@ -84,7 +91,7 @@ public class Game extends JFrame {
             }
         });
 
-        gameTimer = new Timer(200, new ActionListener() {
+        gameTimer = new Timer(100, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 gameTick();
@@ -182,8 +189,8 @@ public class Game extends JFrame {
 
     }
 
-    private boolean isWordCorrect(String currentWord, String[] correctWords) {
-        for (String word : correctWords) {
+    private boolean isWordCorrect(String currentWord, String[][] correctWords) {
+        for (String word : correctWords[currentStage - 1]) {
             if (currentWord.equals(word)) {
                 return true;
             }
@@ -214,9 +221,7 @@ public class Game extends JFrame {
         wordGrid[playerRow][playerCol] = "";
         updateBoard();
 
-        if (checkVictory()) {
-            handleVictory();
-        }
+        checkVictory();
     }
 
     private void displayLoseText() {
@@ -247,6 +252,8 @@ public class Game extends JFrame {
     private void displayCollisionText() {
         gameTimer.stop();
         enemyTimer.stop();
+        lives -= 1;
+        livesLabel.setText("Lives: " + lives);
         canMove = false;
 
         if (lives > 0) {
@@ -349,11 +356,9 @@ public class Game extends JFrame {
 
     private void initializeEnemies() {
         Random rand = new Random();
-        for (int i =0; i < 3; i++) {
-            int row = rand.nextInt(ROWS);
-            int col = rand.nextInt(COLS);
-            enemies.add(new Enemy(row, col));
-        }
+        int row = rand.nextInt(ROWS);
+        int col = rand.nextInt(COLS);
+        enemies.add(new Enemy(row, col));
     }
 
     private void startEnemyMovement() {
@@ -364,6 +369,14 @@ public class Game extends JFrame {
             }
         });
         enemyTimer.start();
+    }
+
+    private void setEnemySpeedForStage() {
+        int baseSpeed = 2000;
+        int speedIncrease = 200;
+        int enemySpeed = baseSpeed - (speedIncrease * (currentStage - 1));
+
+        enemyTimer.setDelay(enemySpeed);
     }
 
     private void moveEnemies() {
@@ -397,9 +410,7 @@ public class Game extends JFrame {
             }
 
             wordGrid[enemy.row][enemy.col] = words[rand.nextInt(words.length)];
-            if (checkVictory()) {
-                handleVictory();
-            }
+            checkVictory();
 
             if (newRow == playerRow && newCol == playerCol) {
                 detectCollision();
@@ -414,15 +425,6 @@ public class Game extends JFrame {
             }
         }
         updateBoard();
-    }
-
-    private Enemy findEnemyAt(int row, int col) {
-        for (Enemy enemy : enemies) {
-            if (enemy.getRow() == row && enemy.getCol() == col) {
-                return enemy;
-            }
-        }
-        return null;
     }
 
     private void spawnNewEnemyIfNeeded() {
@@ -454,16 +456,87 @@ public class Game extends JFrame {
         }
     }
 
-    private boolean checkVictory() {
+    private boolean hasRemainingWords(String[] correctWords) {
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
-                String word = wordGrid[row][col];
-                if (isWordCorrect(word, correctWords)) {
-                    return false; // there is still at least one word on the board that matches. So no victory condition.
+                String wordAtCell = wordGrid[row][col];
+
+                for (String correctWord : correctWords) {
+                    if (wordAtCell.equals(correctWord)) {
+                        return true;
+                    }
                 }
             }
         }
-        return true; // if we get through the board and find no matches, then we have victory.
+        return false;
+    }
+
+    private void checkVictory() {
+        if (!hasRemainingWords(correctWords[currentStage - 1])) {
+            gameTimer.stop();
+            enemyTimer.stop();
+            if (currentStage < TOTAL_STAGES) {
+                currentStage++;
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Stage " + currentStage + " begins! Get ready for a new challenge!",
+                        "Stage Complete!",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+                startNewStage();
+            } else {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Congratulations! You have completed all stages.",
+                        "Level Complete",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+
+                this.dispose();
+                new LevelMenu();
+            }
+        }
+    }
+
+    private void startNewStage() {
+        updateStageSettings();
+        initializeWorldGrid();
+        respawnPlayer();
+        resetEnemies();
+        gameTimer.start();
+        startEnemyMovement();
+        updateBoard();
+    }
+
+    private void updateStageSettings() {
+        String[] clues = {
+                "The 'e' sound in bell (Stage 1)",
+                "The 'a' sound in ball (Stage 2)",
+                "The 'i' sound in mill (Stage 3)",
+        };
+
+        switch (currentStage) {
+            case 2:
+                maxEnemies = 2;
+                clueLabel.setText(clues[currentStage - 1]);
+                setEnemySpeedForStage();
+                break;
+            case 3:
+                maxEnemies = 3;
+                clueLabel.setText(clues[currentStage - 1]);
+                setEnemySpeedForStage();
+                break;
+            default:
+                maxEnemies = 1;
+                clueLabel.setText(clues[currentStage - 1]);
+                setEnemySpeedForStage();
+                break;
+        }
+    }
+
+    private void resetEnemies() {
+        enemies.clear();
+        initializeEnemies();
     }
 
     private void handleVictory() {
