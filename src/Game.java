@@ -25,11 +25,45 @@ public class Game extends JFrame {
     private final int ROWS = 5;
     private final int COLS = 6;
     private String[][] wordGrid;
-    private final String[] words = {"bell", "fell", "tell", "sell", "bed", "dead", "head", "yell", "smell", "mall", "ball", "call", "tall", "stall", "small", "wall", "stall", "fall", "hall", "hill", "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit"};
+    private final String[][] wordBank = {
+            {"bell", "fell", "tell", "sell", "bed", "dead", "head", "yell", "smell", "mall",
+                    "ball", "call", "tall", "stall", "small", "wall", "stall", "fall", "hall", "hill",
+                    "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit", "cold", "told"},
+
+            {"cat", "bat", "hat", "rat", "man", "can", "fan", "tap", "map", "nap", "ball", "call", "tall", "stall", "small", "wall",
+                    "hot", "pot", "dot", "mop", "hop", "top", "rock", "sock", "stop", "job", "slope", "hope", "soap", "spoke",
+                    "moon", "noon", "dune", "rule", "mule", "cube", "blue", "glue", "prune", "flute", "sun", "fun", "gun", },
+
+            {"happy", "brave", "silly", "quiet", "shiny", "tall", "gentle", "curious", "bright", "fuzzy",
+                    "jump", "play", "read", "write", "dance", "think", "laugh", "climb", "draw", "swim",
+                    "teacher", "friend", "library", "mountain", "garden", "puzzle", "bicycle", "sundae", "ocean", "castle"}
+
+    };
     private final String[][] correctWords = {
             {"bell", "fell", "tell", "sell", "yell", "smell", "bed", "dead", "head"},
             {"small", "wall", "stall", "call", "tall", "mall", "hall", "fall", "stall", "ball"},
-            {"hill", "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit"}
+            {"hill", "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit"},
+
+            {"cat", "bat", "hat", "rat", "man", "can", "fan", "tap", "map", "nap"},
+            {"hot", "pot", "dot", "mop", "hop", "top", "rock", "sock", "stop", "job"},
+            {"moon", "noon", "dune", "rule", "mule", "cube", "blue", "glue", "prune", "flute"},
+
+            {"happy", "brave", "silly", "quiet", "shiny", "tall", "gentle", "curious", "bright", "fuzzy"},
+            {"jump", "play", "read", "write", "dance", "think", "laugh", "climb", "draw", "swim"},
+            {"teacher", "friend", "library", "mountain", "garden", "puzzle", "bicycle", "sundae", "ocean", "castle"}
+    };
+    private String[] clues = {
+            "short 'e' sound as in bell",
+            "short 'a' sound as in ball",
+            "short 'i' sound as in sit",
+
+            "short 'a' sound as in cat",
+            "short 'o' sound as in hot",
+            "long 'u' sound as in mule",
+
+            "adjective",
+            "verb",
+            "noun"
     };
     private boolean canMove = true;
     private Timer gameTimer;
@@ -126,7 +160,7 @@ public class Game extends JFrame {
         Random rand = new Random();
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
-                wordGrid[row][col] = words[rand.nextInt(words.length)];
+                wordGrid[row][col] = wordBank[level - 1][rand.nextInt(wordBank[level - 1].length)];
             }
         }
         updateBoard();
@@ -416,8 +450,11 @@ public class Game extends JFrame {
                 enemy.setCol(newCol);
             }
 
-            wordGrid[enemy.row][enemy.col] = words[rand.nextInt(words.length)];
-            checkVictory();
+            if (wordGrid[enemy.row][enemy.col] != "") {
+                wordGrid[enemy.row][enemy.col] = wordBank[level - 1][rand.nextInt(wordBank[level - 1].length)]; // check all uses of wordBank. I'm tired and can't remember which goes first for the 2d array.
+                checkVictory();
+            }
+
 
             if (newRow == playerRow && newCol == playerCol) {
                 detectCollision();
@@ -436,6 +473,7 @@ public class Game extends JFrame {
 
     private void spawnNewEnemyIfNeeded() {
         if (enemies.size() < maxEnemies) {
+            playSound("src/Resources/331668__nicola_ariutti__brass_bell_01_take2.wav");
             Random rand = new Random();
             int newRow = 0, newCol = 0;
             int edge = rand.nextInt(4);
@@ -482,6 +520,7 @@ public class Game extends JFrame {
         if (!hasRemainingWords(correctWords[currentStage - 1])) {
             gameTimer.stop();
             enemyTimer.stop();
+            playSound("src/Resources/413614__pjcohen__orchestral_concert_tamtam_gong_06.wav");
             if (currentStage < TOTAL_STAGES) {
                 currentStage++;
                 JOptionPane.showMessageDialog(
@@ -516,12 +555,6 @@ public class Game extends JFrame {
     }
 
     private void updateStageSettings() {
-        String[] clues = {
-                "The 'e' sound in bell (Stage 1)",
-                "The 'a' sound in ball (Stage 2)",
-                "The 'i' sound in mill (Stage 3)",
-        };
-
         switch (currentStage) {
             case 2:
                 maxEnemies = 2;
@@ -544,19 +577,6 @@ public class Game extends JFrame {
     private void resetEnemies() {
         enemies.clear();
         initializeEnemies();
-    }
-
-    private void handleVictory() {
-        gameTimer.stop();
-        enemyTimer.stop();
-        JOptionPane.showMessageDialog(
-                this,
-                "Congratulations! You've completed the stage!",
-                "Victory",
-                JOptionPane.INFORMATION_MESSAGE
-        );
-        this.dispose();
-        new LevelMenu();
     }
 
     public void playSound(String soundFilePath) {
