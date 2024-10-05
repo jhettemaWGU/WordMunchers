@@ -30,19 +30,5 @@ public class SoundPlayer {
         }
     }
 
-    public void playSoundEffect(String filePath) {
-        try {
-            File soundPath = new File(filePath);
-            if (soundPath.exists()) {
-                AudioInputStream audioStream = AudioSystem.getAudioInputStream(soundPath);
-                Clip clip = AudioSystem.getClip();
-                clip.open(audioStream);
-                clip.start();
-            } else {
-                System.out.println("File not found " + filePath);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+
 }
