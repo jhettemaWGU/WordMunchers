@@ -1,3 +1,5 @@
+package MyGame;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -21,7 +23,7 @@ public class StartScreen extends JFrame{
         JPanel buttonPanel = new JPanel();
         buttonPanel.setLayout(new FlowLayout());
 
-        JButton startButton = new JButton("Start Game");
+        JButton startButton = new JButton("Start MyGame.Game");
         startButton.setFont(new Font("SansSerif", Font.PLAIN, 24));
         startButton.setFocusPainted(false);
         startButton.addActionListener(new ActionListener() {
@@ -39,7 +41,7 @@ public class StartScreen extends JFrame{
     }
 
     private void startGame() {
-        System.out.println("Starting Game");
+        System.out.println("Starting MyGame.Game");
         new LevelMenu();
         this.dispose();
     }

@@ -1,3 +1,5 @@
+package MyGame;
+
 public class Main {
     private static SoundPlayer soundPlayer;
 

@@ -1,3 +1,5 @@
+package MyGame;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -86,8 +88,6 @@ public class Game extends JFrame {
     };
 
 
-
-
     public Game() {
         enemies = new ArrayList<>();
 
@@ -136,7 +136,7 @@ public class Game extends JFrame {
 
         wordGrid = new String[ROWS][COLS];
         initializeWorldGrid();
-
+        stageStartTime = System.currentTimeMillis();
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -273,7 +273,7 @@ public class Game extends JFrame {
                 lives += 1;
                 livesLabel.setText("Lives: " + lives);
                 crossedOneHundred = true;
-                // play sound for extra life
+                playSound("src/Resources/439889__simonbay__lushlife_levelup.wav");
             }
 
             if (score > 990 && crossedOneThousand == false) {
@@ -321,7 +321,7 @@ public class Game extends JFrame {
                     JOptionPane.WARNING_MESSAGE
             );
             this.dispose();
-            new StartScreen();
+            new LevelMenu();
         }
     }
 
@@ -553,12 +553,14 @@ public class Game extends JFrame {
             stageTimes.add(stageTime);
 
             if (isNewRecord(timeElapsed, currentStage)) {
+                playSound("src/Resources/428156__higgs01__yay.wav");
                 playerName = promptForName();
                 saveStageTime(currentLevel, currentStage, stageTime, playerName);
-                updateHallOfFame(playerName, stageTime, currentStage);
+                updateHallOfFame(playerName, stageTime, currentLevel, currentStage);
+            } else {
+                playSound("src/Resources/413614__pjcohen__orchestral_concert_tamtam_gong_06.wav");
             }
 
-            playSound("src/Resources/413614__pjcohen__orchestral_concert_tamtam_gong_06.wav");
             if (currentStage < TOTAL_STAGES && currentLevel <= TOTAL_LEVELS) {
                 currentStage++;
                 JOptionPane.showMessageDialog(
@@ -571,7 +573,7 @@ public class Game extends JFrame {
             } else if (currentStage == TOTAL_STAGES && currentLevel <= TOTAL_LEVELS) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Congratulations! You have completed all stages.",
+                        "Congratulations! You have completed all stages. On to the next level...",
                         "Level Complete",
                         JOptionPane.INFORMATION_MESSAGE
                 );
@@ -650,7 +652,6 @@ public class Game extends JFrame {
                     if (wordGrid[row][col].equals(correctWord)) {
                         wordGrid[row][col] = "";
                     }
-
                 }
             }
         }
@@ -659,14 +660,14 @@ public class Game extends JFrame {
 
     private void saveStageTime(int level, int stage, long time, String name) {
         try(FileWriter writer = new FileWriter("hall_of_fame.txt", true)) {
-            writer.write(name + "," + time + "," + stage + "\n");
+            writer.write(name + "," + time + "," + level + "," + stage + "\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     private boolean isNewRecord(long time, int stage) {
-        List<Long> topTimes = loadTopTimesForStage(stage);
+        List<Long> topTimes = loadTopTimesForStage(currentLevel, currentStage);
         return topTimes.size() < 3 || time < Collections.max(topTimes);
     }
 
@@ -674,11 +675,49 @@ public class Game extends JFrame {
         return JOptionPane.showInputDialog(null, "New Record! Enter your name:");
     }
 
-    private void updateHallOfFame(String name, long time, int stage) {
+    private void updateHallOfFame(String name, long time, int level, int stage) {
+        // Load all existing hall of fame data
         List<String[]> hallOfFameData = loadHallOfFameData();
-        hallOfFameData.add(new String[]{name, String.valueOf(time), String.valueOf(stage)});
-        hallOfFameData = getTopThreePerStage(hallOfFameData, stage);
-        saveHallOfFameData(hallOfFameData);
+
+        // Add the new record if it doesn't already exist
+        String[] newRecord = new String[]{name, String.valueOf(time), String.valueOf(level), String.valueOf(stage)};
+
+        // Find and filter the relevant entries for the current level and stage
+        List<String[]> stageEntries = new ArrayList<>();
+        List<String[]> otherEntries = new ArrayList<>();
+
+        for (String[] entry : hallOfFameData) {
+            int entryLevel = Integer.parseInt(entry[2].trim());
+            int entryStage = Integer.parseInt(entry[3].trim());
+
+            if (entryLevel == level && entryStage == stage) {
+                stageEntries.add(entry);  // Add relevant entries for this level and stage
+            } else {
+                otherEntries.add(entry);  // Keep other entries intact
+            }
+        }
+        boolean duplicateFound = false;
+        for (String[] entry : stageEntries) {
+            if (Arrays.equals(entry, newRecord)) {
+                duplicateFound = true; // Prevent adding a duplicate record
+                break;
+            }
+        }
+
+        if (!duplicateFound) {
+            stageEntries.add(newRecord); // Add only if no duplicate was found
+        }
+
+        // Sort and keep top 3 for the current stage/level
+        stageEntries = getTopThreePerStage(stageEntries);
+
+        // Combine the other entries and updated stage entries
+        List<String[]> updatedHallOfFameData = new ArrayList<>();
+        updatedHallOfFameData.addAll(otherEntries);  // Add back all the other entries
+        updatedHallOfFameData.addAll(stageEntries);  // Add the updated stage entries
+
+        // Save the updated data back to the file
+        saveHallOfFameData(updatedHallOfFameData);
     }
 
     private List<String[]> loadHallOfFameData() {
@@ -686,18 +725,9 @@ public class Game extends JFrame {
         try (BufferedReader reader = new BufferedReader(new FileReader("hall_of_fame.txt"))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                // Parse lines with "Level X - Stage Y: Z seconds"
-                String[] parts = line.split(":");
-                if (parts.length == 2) {
-                    String[] stageParts = parts[0].split("-");
-                    String timePart = parts[1].trim().replace(" seconds", "");
-
-                    // Extract level, stage, and time
-                    String levelStage = stageParts[1].trim().replace("Stage", "").trim();
-                    String time = timePart.trim();
-
-                    // Use dummy name or placeholder, since current format doesn't include a name
-                    hallOfFameData.add(new String[]{"Unknown", time, levelStage});
+                String[] parts = line.split(",");
+                if (parts.length == 4) {
+                    hallOfFameData.add(parts);
                 }
             }
         } catch (IOException e) {
@@ -707,18 +737,15 @@ public class Game extends JFrame {
     }
 
 
-    private List<Long> loadTopTimesForStage(int stage) {
+
+    private List<Long> loadTopTimesForStage(int level, int stage) {
         List<Long> topTimes = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader("hall_of_fame.txt"))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                // Parse lines with "Level X - Stage Y: Z seconds"
-                if (line.contains("Stage " + stage)) {
-                    String[] parts = line.split(":");
-                    if (parts.length == 2) {
-                        String timePart = parts[1].trim().replace(" seconds", "");
-                        topTimes.add(Long.parseLong(timePart));
-                    }
+                String[] parts = line.split(",");
+                if (parts.length == 4 && Integer.parseInt(parts[2]) == level && Integer.parseInt(parts[3]) == stage) {
+                    topTimes.add(Long.parseLong(parts[1]));
                 }
             }
         } catch (IOException | NumberFormatException e) {
@@ -727,23 +754,16 @@ public class Game extends JFrame {
         return topTimes;
     }
 
-
-    private List<String[]> getTopThreePerStage(List<String[]> data, int stage) {
-        List<String[]> stageEntries = new ArrayList<>();
-        for (String[] entry : data) {
-            if (Integer.parseInt(entry[2]) == stage) {
-                stageEntries.add(entry);
-            }
-        }
+    private List<String[]> getTopThreePerStage(List<String[]> stageEntries) {
+        // Sort entries based on time (second element of each entry)
         stageEntries.sort(Comparator.comparingLong(e -> Long.parseLong(e[1])));
-        if (stageEntries.size() > 3) {
-            stageEntries = stageEntries.subList(0, 3);
-        }
-        return stageEntries;
+
+        // Return the top three entries (or fewer if there aren't 3)
+        return stageEntries.size() > 3 ? stageEntries.subList(0, 3) : stageEntries;
     }
 
     private void saveHallOfFameData(List<String[]> data) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter("hall_of_fame.txt"))) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter("hall_of_fame.txt", false))) {
             for (String[] entry : data) {
                 writer.println(String.join(",", entry));
             }
@@ -751,6 +771,8 @@ public class Game extends JFrame {
             e.printStackTrace();
         }
     }
+
+
 
     public void playSound(String soundFilePath) {
         try {
