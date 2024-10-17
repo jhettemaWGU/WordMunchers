@@ -41,7 +41,7 @@ public class Game extends JFrame {
     private boolean crossedOneThousand = false;
 
     private final String[][] wordBank = {
-            {"bell", "fell", "tell", "sell", "bed", "dead", "head", "yell", "smell", "mall",
+            {"bell", "fell", "tell", "sell", "shell", "spell", "head", "yell", "smell", "quell",
                     "ball", "call", "tall", "stall", "small", "wall", "stall", "fall", "hall", "hill",
                     "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit", "cold", "told"},
 
@@ -52,10 +52,10 @@ public class Game extends JFrame {
             {"happy", "brave", "silly", "quiet", "shiny", "tall", "gentle", "curious", "bright", "fuzzy",
                     "jump", "play", "read", "write", "dance", "think", "laugh", "climb", "draw", "swim",
                     "teacher", "friend", "library", "mountain", "garden", "puzzle", "bicycle", "sundae", "ocean", "castle"}
-
     };
+
     private final String[][] correctWords = {
-            {"bell", "fell", "tell", "sell", "yell", "smell", "bed", "dead", "head"},
+            {"bell", "fell", "tell", "sell", "yell", "smell", "shell", "spell", "quell"},
             {"small", "wall", "stall", "call", "tall", "mall", "hall", "fall", "stall", "ball"},
             {"hill", "pill", "mill", "drill", "still", "kill", "chill", "sit", "pit"},
 
@@ -67,8 +67,9 @@ public class Game extends JFrame {
             {"jump", "play", "read", "write", "dance", "think", "laugh", "climb", "draw", "swim"},
             {"teacher", "friend", "library", "mountain", "garden", "puzzle", "bicycle", "sundae", "ocean", "castle"}
     };
+
     private String[] clues = {
-            "short 'e' sound as in bell",
+            "Rhymes with 'bell'",
             "short 'a' sound as in ball",
             "short 'i' sound as in sit",
 
@@ -280,7 +281,7 @@ public class Game extends JFrame {
                 lives += 1;
                 livesLabel.setText("Lives: " + lives);
                 crossedOneThousand = true;
-                // play sound for extra life
+                playSound("src/Resources/439889__simonbay__lushlife_levelup.wav");
             }
             playSound("src/Resources/524609__clearwavsound__bone-crunch.wav");
         } else {
@@ -345,11 +346,11 @@ public class Game extends JFrame {
             JOptionPane.showMessageDialog(
                     this,
                     "You were eaten by a Dittums and have no more lives.",
-                    "Sorry. You were eaten are out of lives.",
+                    "Sorry. You were eaten and are out of lives.",
                     JOptionPane.WARNING_MESSAGE
             );
             this.dispose();
-            new StartScreen();
+            new LevelMenu();
         }
     }
 
@@ -552,7 +553,7 @@ public class Game extends JFrame {
             int stageTime = (int) ((System.currentTimeMillis() - stageStartTime) / 1000);
             stageTimes.add(stageTime);
 
-            if (isNewRecord(timeElapsed, currentStage)) {
+            if (isNewRecord(timeElapsed, currentLevel, currentStage)) {
                 playSound("src/Resources/428156__higgs01__yay.wav");
                 playerName = promptForName();
                 saveStageTime(currentLevel, currentStage, stageTime, playerName);
@@ -666,7 +667,7 @@ public class Game extends JFrame {
         }
     }
 
-    private boolean isNewRecord(long time, int stage) {
+    private boolean isNewRecord(long time, int currentLevel, int currentStage) {
         List<Long> topTimes = loadTopTimesForStage(currentLevel, currentStage);
         return topTimes.size() < 3 || time < Collections.max(topTimes);
     }
@@ -676,13 +677,8 @@ public class Game extends JFrame {
     }
 
     private void updateHallOfFame(String name, long time, int level, int stage) {
-        // Load all existing hall of fame data
         List<String[]> hallOfFameData = loadHallOfFameData();
-
-        // Add the new record if it doesn't already exist
         String[] newRecord = new String[]{name, String.valueOf(time), String.valueOf(level), String.valueOf(stage)};
-
-        // Find and filter the relevant entries for the current level and stage
         List<String[]> stageEntries = new ArrayList<>();
         List<String[]> otherEntries = new ArrayList<>();
 
@@ -708,15 +704,11 @@ public class Game extends JFrame {
             stageEntries.add(newRecord); // Add only if no duplicate was found
         }
 
-        // Sort and keep top 3 for the current stage/level
         stageEntries = getTopThreePerStage(stageEntries);
-
-        // Combine the other entries and updated stage entries
         List<String[]> updatedHallOfFameData = new ArrayList<>();
         updatedHallOfFameData.addAll(otherEntries);  // Add back all the other entries
         updatedHallOfFameData.addAll(stageEntries);  // Add the updated stage entries
 
-        // Save the updated data back to the file
         saveHallOfFameData(updatedHallOfFameData);
     }
 
@@ -736,8 +728,6 @@ public class Game extends JFrame {
         return hallOfFameData;
     }
 
-
-
     private List<Long> loadTopTimesForStage(int level, int stage) {
         List<Long> topTimes = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader("hall_of_fame.txt"))) {
@@ -755,10 +745,7 @@ public class Game extends JFrame {
     }
 
     private List<String[]> getTopThreePerStage(List<String[]> stageEntries) {
-        // Sort entries based on time (second element of each entry)
         stageEntries.sort(Comparator.comparingLong(e -> Long.parseLong(e[1])));
-
-        // Return the top three entries (or fewer if there aren't 3)
         return stageEntries.size() > 3 ? stageEntries.subList(0, 3) : stageEntries;
     }
 
@@ -772,29 +759,21 @@ public class Game extends JFrame {
         }
     }
 
-
-
     public void playSound(String soundFilePath) {
         try {
-            // Obtain an AudioInputStream from the sound file
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File(soundFilePath));
             AudioFormat baseFormat = audioInputStream.getFormat();
-
-            // Check if the format is supported directly
             AudioFormat decodedFormat = new AudioFormat(
                     AudioFormat.Encoding.PCM_SIGNED,
                     baseFormat.getSampleRate(),
-                    16,  // Use 16-bit instead of 24-bit
+                    16,
                     baseFormat.getChannels(),
-                    baseFormat.getChannels() * 2, // Frame size
+                    baseFormat.getChannels() * 2,
                     baseFormat.getSampleRate(),
-                    false // Set to big-endian if needed
+                    false
             );
 
-            // Convert the stream if needed
             AudioInputStream decodedAudioStream = AudioSystem.getAudioInputStream(decodedFormat, audioInputStream);
-
-            // Open and play the audio
             Clip clip = AudioSystem.getClip();
             clip.open(decodedAudioStream);
             clip.start();

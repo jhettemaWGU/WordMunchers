@@ -23,7 +23,7 @@ public class StartScreen extends JFrame{
         JPanel buttonPanel = new JPanel();
         buttonPanel.setLayout(new FlowLayout());
 
-        JButton startButton = new JButton("Start MyGame.Game");
+        JButton startButton = new JButton("Start Game");
         startButton.setFont(new Font("SansSerif", Font.PLAIN, 24));
         startButton.setFocusPainted(false);
         startButton.addActionListener(new ActionListener() {
